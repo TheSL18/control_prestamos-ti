@@ -7,3 +7,4 @@ dist/*
 app
  app.py~
 config.ini
+app.spec
