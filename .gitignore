@@ -1,0 +1,9 @@
+.venv/*
+/.venv
+/build
+build/*
+/dist
+dist/*
+app
+ app.py~
+config.ini
