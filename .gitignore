@@ -1,10 +1,7 @@
-.venv/*
 /.venv
 /build
-build/*
 /dist
-dist/*
 app
- app.py~
+app.py~
 config.ini
 app.spec
