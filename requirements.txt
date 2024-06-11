@@ -1,0 +1,14 @@
+altgraph
+bcrypt
+et-xmlfile
+mysql-connector-python
+numpy
+openpyxl
+packaging
+pandas
+python-dateutil
+pytz
+setuptools
+six
+tk
+tzdata
