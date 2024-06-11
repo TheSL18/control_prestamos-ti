@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-#!/usr/bin/env python
-
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
