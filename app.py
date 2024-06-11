@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+#!/usr/bin/env python
+
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
@@ -101,12 +103,12 @@ def mostrar_ventana_configuracion():
 def iniciar_sesion():
     usuario = entrada_usuario.get()
     contrasena = entrada_contrasena.get()
-    
+
     conexion = conectar_db()
     cursor = conexion.cursor()
     cursor.execute("SELECT * FROM usuarios WHERE nombre_usuario=%s", (usuario,))
     resultado = cursor.fetchone()
-    
+
     if resultado and bcrypt.checkpw(contrasena.encode(), resultado[2].encode()):
         es_admin = resultado[3]
         messagebox.showinfo("Éxito", "Inicio de sesión correcto")
@@ -114,7 +116,7 @@ def iniciar_sesion():
         mostrar_ventana_principal(es_admin)
     else:
         messagebox.showerror("Error", "Usuario o contraseña incorrectos")
-    
+
     cursor.close()
     conexion.close()
 
@@ -122,8 +124,8 @@ def iniciar_sesion():
 def mostrar_ventana_principal(es_admin):
     ventana_principal = tk.Tk()
     ventana_principal.title("Sistema de Inventario y Préstamo")
-    ventana_principal.geometry("1200x600")
-    
+    ventana_principal.geometry("1200x600")  # Ajuste el tamaño para acomodar la nueva columna
+
     # Mostrar inventario
     def mostrar_inventario():
         conexion = conectar_db()
@@ -139,60 +141,15 @@ def mostrar_ventana_principal(es_admin):
             LEFT JOIN usuarios ON prestamos.usuario_id = usuarios.id
         """)
         equipos = cursor.fetchall()
-        
+
         for row in tabla_inventario.get_children():
             tabla_inventario.delete(row)
-        
+
         for equipo in equipos:
             tabla_inventario.insert("", "end", values=equipo)
-        
+
         cursor.close()
         conexion.close()
-
-    # Actualizar el estado del equipo seleccionado
-    def actualizar_estado():
-        selected_item = tabla_inventario.selection()
-        if not selected_item:
-            messagebox.showerror("Error", "Debe seleccionar un equipo para actualizar")
-            return
-
-        item_values = tabla_inventario.item(selected_item, 'values')
-        equipo_id = item_values[0]
-
-        ventana_actualizar_estado = tk.Tk()
-        ventana_actualizar_estado.title("Actualizar Estado del Equipo")
-        ventana_actualizar_estado.geometry("300x200")
-
-        tk.Label(ventana_actualizar_estado, text=f"Equipo: {item_values[1]}").pack()
-
-        estado_var = tk.StringVar()
-        estado_var.set(item_values[4])  # Estado actual
-
-        tk.Label(ventana_actualizar_estado, text="Nuevo Estado").pack()
-        opciones_estado = ["Disponible", "En préstamo", "Mantenimiento", "Fuera de servicio"]
-        menu_estado = ttk.Combobox(ventana_actualizar_estado, textvariable=estado_var, values=opciones_estado)
-        menu_estado.pack()
-
-        def confirmar_cambio_estado():
-            nuevo_estado = estado_var.get()
-            disponible = nuevo_estado == "Disponible"
-            conexion = conectar_db()
-            cursor = conexion.cursor()
-            cursor.execute(
-                "UPDATE equipos SET disponible = %s WHERE id = %s",
-                (disponible, equipo_id)
-            )
-            conexion.commit()
-            cursor.close()
-            conexion.close()
-
-            ventana_actualizar_estado.destroy()
-            messagebox.showinfo("Éxito", "Estado actualizado")
-            mostrar_inventario()
-
-        tk.Button(ventana_actualizar_estado, text="Actualizar", command=confirmar_cambio_estado).pack()
-
-        ventana_actualizar_estado.mainloop()
 
     # Función para seleccionar el usuario y realizar el préstamo
     def seleccionar_usuario_para_prestamo(codigo_barras):
@@ -232,45 +189,40 @@ def mostrar_ventana_principal(es_admin):
     # Realizar préstamo
     def realizar_prestamo(codigo_barras, usuario_id):
         fecha_prestamo = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    conexion = conectar_db()
-    cursor = conexion.cursor()
-    cursor.execute("SELECT id, estado FROM equipos WHERE codigo_barras=%s", (codigo_barras,))
-    equipo_info = cursor.fetchone()
-    
-    if equipo_info:
-        equipo_id, estado = equipo_info
-        if estado == "Dado de baja":
-            messagebox.showerror("Error", "Este equipo está dado de baja y no se puede prestar.")
-            return
 
-        cursor.execute(
-            "INSERT INTO prestamos (equipo_id, usuario_id, fecha_prestamo) VALUES (%s, %s, %s)",
-            (equipo_id, usuario_id, fecha_prestamo)
-        )
-        cursor.execute(
-            "UPDATE equipos SET disponible = FALSE WHERE codigo_barras = %s",
-            (codigo_barras,)
-        )
-        conexion.commit()
-        messagebox.showinfo("Éxito", "Préstamo realizado")
-        mostrar_inventario()
-    else:
-        messagebox.showerror("Error", "Equipo no encontrado o código de barras incorrecto")
-    
-    cursor.close()
-    conexion.close()
+        conexion = conectar_db()
+        cursor = conexion.cursor()
+        cursor.execute("SELECT id FROM equipos WHERE codigo_barras=%s", (codigo_barras,))
+        equipo_id = cursor.fetchone()
+
+        if equipo_id:
+            cursor.execute(
+                "INSERT INTO prestamos (equipo_id, usuario_id, fecha_prestamo) VALUES (%s, %s, %s)",
+                (equipo_id[0], usuario_id, fecha_prestamo)
+            )
+            cursor.execute(
+                "UPDATE equipos SET disponible = FALSE WHERE codigo_barras = %s",
+                (codigo_barras,)
+            )
+            conexion.commit()
+            messagebox.showinfo("Éxito", "Préstamo realizado")
+            mostrar_inventario()
+        else:
+            messagebox.showerror("Error", "Equipo no encontrado o código de barras incorrecto")
+
+        cursor.close()
+        conexion.close()
 
     # Devolver equipo
     def devolver_equipo():
         codigo_barras = entrada_codigo_barras.get()
         fecha_devolucion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
+
         conexion = conectar_db()
         cursor = conexion.cursor()
         cursor.execute("SELECT id FROM equipos WHERE codigo_barras=%s", (codigo_barras,))
         equipo_id = cursor.fetchone()
-        
+
         if equipo_id:
             cursor.execute(
                 "UPDATE prestamos SET fecha_devolucion = %s WHERE equipo_id = %s AND fecha_devolucion IS NULL",
@@ -285,7 +237,7 @@ def mostrar_ventana_principal(es_admin):
             mostrar_inventario()
         else:
             messagebox.showerror("Error", "Equipo no encontrado o código de barras incorrecto")
-        
+
         cursor.close()
         conexion.close()
 
@@ -297,11 +249,11 @@ def mostrar_ventana_principal(es_admin):
     tabla_inventario.pack()
 
     tk.Button(ventana_principal, text="Mostrar Inventario", command=mostrar_inventario).pack()
-    
+
     tk.Label(ventana_principal, text="Código de Barras del Equipo").pack()
     entrada_codigo_barras = tk.Entry(ventana_principal)
     entrada_codigo_barras.pack()
-    
+
     # Modificar el botón de realizar préstamo para abrir la ventana de selección de usuario
     tk.Button(ventana_principal, text="Realizar Préstamo", command=lambda: seleccionar_usuario_para_prestamo(entrada_codigo_barras.get())).pack()
     tk.Button(ventana_principal, text="Devolver Equipo", command=devolver_equipo).pack()
@@ -311,9 +263,6 @@ def mostrar_ventana_principal(es_admin):
         tk.Button(ventana_principal, text="Agregar Equipo", command=agregar_equipo).pack()
         tk.Button(ventana_principal, text="Eliminar Equipo", command=eliminar_equipo).pack()
         tk.Button(ventana_principal, text="Agregar Usuario", command=agregar_usuario).pack()
-        
-        # Botón para actualizar el estado del equipo
-        tk.Button(ventana_principal, text="Actualizar Estado", command=actualizar_estado).pack()
 
     ventana_principal.mainloop()
 
@@ -324,7 +273,7 @@ def agregar_equipo():
         descripcion = entrada_descripcion.get()
         tipo = entrada_tipo.get()
         codigo_barras = entrada_codigo_barras_agregar.get()
-        
+
         conexion = conectar_db()
         cursor = conexion.cursor()
         cursor.execute(
@@ -334,7 +283,7 @@ def agregar_equipo():
         conexion.commit()
         cursor.close()
         conexion.close()
-        
+
         ventana_agregar.destroy()
         messagebox.showinfo("Éxito", "Equipo agregado")
         mostrar_inventario()
@@ -342,23 +291,23 @@ def agregar_equipo():
     ventana_agregar = tk.Tk()
     ventana_agregar.title("Agregar Equipo")
     ventana_agregar.geometry("300x300")
-    
+
     tk.Label(ventana_agregar, text="Nombre").pack()
     entrada_nombre = tk.Entry(ventana_agregar)
     entrada_nombre.pack()
-    
+
     tk.Label(ventana_agregar, text="Descripción").pack()
     entrada_descripcion = tk.Entry(ventana_agregar)
     entrada_descripcion.pack()
-    
+
     tk.Label(ventana_agregar, text="Tipo (Computadora Portátil, Audio, Video)").pack()
     entrada_tipo = tk.Entry(ventana_agregar)
     entrada_tipo.pack()
-    
+
     tk.Label(ventana_agregar, text="Código de Barras").pack()
     entrada_codigo_barras_agregar = tk.Entry(ventana_agregar)
     entrada_codigo_barras_agregar.pack()
-    
+
     tk.Button(ventana_agregar, text="Agregar", command=agregar).pack()
 
     ventana_agregar.mainloop()
@@ -367,14 +316,14 @@ def agregar_equipo():
 def eliminar_equipo():
     def eliminar():
         codigo_barras = entrada_codigo_barras_eliminar.get()
-        
+
         conexion = conectar_db()
         cursor = conexion.cursor()
         cursor.execute("DELETE FROM equipos WHERE codigo_barras = %s", (codigo_barras,))
         conexion.commit()
         cursor.close()
         conexion.close()
-        
+
         ventana_eliminar.destroy()
         messagebox.showinfo("Éxito", "Equipo eliminado")
         mostrar_inventario()
@@ -382,11 +331,11 @@ def eliminar_equipo():
     ventana_eliminar = tk.Tk()
     ventana_eliminar.title("Eliminar Equipo")
     ventana_eliminar.geometry("300x200")
-    
+
     tk.Label(ventana_eliminar, text="Código de Barras").pack()
     entrada_codigo_barras_eliminar = tk.Entry(ventana_eliminar)
     entrada_codigo_barras_eliminar.pack()
-    
+
     tk.Button(ventana_eliminar, text="Eliminar", command=eliminar).pack()
 
     ventana_eliminar.mainloop()
@@ -397,10 +346,10 @@ def agregar_usuario():
         nombre_usuario = entrada_nombre_usuario.get()
         contrasena = entrada_contrasena_usuario.get()
         es_admin = var_admin.get()
-        
+
         # Encriptar contraseña
         hashed_contrasena = bcrypt.hashpw(contrasena.encode(), bcrypt.gensalt()).decode()
-        
+
         conexion = conectar_db()
         cursor = conexion.cursor()
         cursor.execute(
@@ -410,25 +359,25 @@ def agregar_usuario():
         conexion.commit()
         cursor.close()
         conexion.close()
-        
+
         ventana_agregar_usuario.destroy()
         messagebox.showinfo("Éxito", "Usuario agregado")
 
     ventana_agregar_usuario = tk.Tk()
     ventana_agregar_usuario.title("Agregar Usuario")
     ventana_agregar_usuario.geometry("300x300")
-    
+
     tk.Label(ventana_agregar_usuario, text="Nombre de Usuario").pack()
     entrada_nombre_usuario = tk.Entry(ventana_agregar_usuario)
     entrada_nombre_usuario.pack()
-    
+
     tk.Label(ventana_agregar_usuario, text="Contraseña").pack()
     entrada_contrasena_usuario = tk.Entry(ventana_agregar_usuario, show='*')
     entrada_contrasena_usuario.pack()
-    
+
     var_admin = tk.BooleanVar()
     tk.Checkbutton(ventana_agregar_usuario, text="Es administrador", variable=var_admin).pack()
-    
+
     tk.Button(ventana_agregar_usuario, text="Agregar", command=agregar).pack()
 
     ventana_agregar_usuario.mainloop()
